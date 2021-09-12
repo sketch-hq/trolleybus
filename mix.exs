@@ -20,7 +20,8 @@ defmodule Trolleybus.MixProject do
 
   defp deps do
     [
-      {:ecto, "~> 3.0", optional: true}
+      {:ecto, "~> 3.0", optional: true},
+      {:credo, "~> 1.5", only: [:dev, :test], runtime: false}
     ]
   end
 end
