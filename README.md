@@ -1,6 +1,8 @@
 # Trolleybus
 
-**TODO: Add description**
+Local, application-level PubSub API for dispatching side effects.
+
+**TODO: More extensive description**
 
 ## Installation
 
