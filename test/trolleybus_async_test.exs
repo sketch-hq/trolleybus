@@ -58,13 +58,14 @@ defmodule TrolleybusAsyncTest do
     end
   end
 
-  describe "publish/2 async" do
+  describe "publish/2 in modes other than full_sync" do
     test "publishes asynchronously" do
       pid_binary = :erlang.term_to_binary(self())
 
       assert :ok =
                Trolleybus.publish(%Event{field1: "foo", binary_field: pid_binary},
-                 full_sync: false
+                 mode_override: nil,
+                 mode: :async
                )
 
       assert_receive {:published_handler1, event}
@@ -76,10 +77,7 @@ defmodule TrolleybusAsyncTest do
       pid_binary = :erlang.term_to_binary(self())
 
       assert :ok =
-               Trolleybus.publish(%Event{field1: "foo", binary_field: pid_binary},
-                 async: false,
-                 full_sync: false
-               )
+               Trolleybus.publish(%Event{field1: "foo", binary_field: pid_binary}, mode: :sync)
 
       assert_receive {:published_handler1, event}
       assert_receive {:published_handler2, ^event}
@@ -97,7 +95,8 @@ defmodule TrolleybusAsyncTest do
                             binary_field: pid_binary,
                             explode?: true
                           },
-                          full_sync: false
+                          mode_override: nil,
+                          mode: :async
                         )
 
                refute_receive {:published_handler1, _}
@@ -118,8 +117,8 @@ defmodule TrolleybusAsyncTest do
                             binary_field: pid_binary,
                             explode?: true
                           },
-                          async: false,
-                          full_sync: false
+                          mode_override: nil,
+                          mode: :sync
                         )
              end) =~
                "[#{inspect(__MODULE__)}.Handler1] Event handler failed with ** (RuntimeError) boom"
@@ -137,9 +136,9 @@ defmodule TrolleybusAsyncTest do
           assert :ok =
                    Trolleybus.publish(
                      %Event{field1: "foo", binary_field: pid_binary, timeout?: true},
-                     async: false,
-                     sync_timeout: 100,
-                     full_sync: false
+                     mode_override: nil,
+                     mode: :sync,
+                     sync_timeout: 100
                    )
         end)
 

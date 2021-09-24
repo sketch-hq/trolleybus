@@ -328,9 +328,9 @@ defmodule TrolleybusTest do
     test "returns buffer contents containing events along with options" do
       Trolleybus.muffled(fn ->
         Trolleybus.publish(%Event1{field1: "foo"})
-        Trolleybus.publish(%Event2{field1: "bar"}, async: false, sync_timeout: 2_000)
+        Trolleybus.publish(%Event2{field1: "bar"}, mode: :sync, sync_timeout: 2_000)
 
-        assert [{%Event1{}, []}, {%Event2{}, [async: false, sync_timeout: 2_000]}] =
+        assert [{%Event1{}, []}, {%Event2{}, [mode: :sync, sync_timeout: 2_000]}] =
                  Trolleybus.get_buffer()
       end)
     end

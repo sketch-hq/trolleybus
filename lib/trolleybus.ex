@@ -93,12 +93,14 @@ defmodule Trolleybus do
   A dedicated process is spun up for each handler call, where handler logic
   is executed on the event. Handlers are called in parallel.
 
-  Publishing may be executed in two modes - asynchronous (default), which does
-  not wait for the side effects to complete executing, and synchronous (with
-  `async` flag set to `true`), which blocks until all event handlers complete.
+  Publishing may be executed in three modes - fully synchronous (`:full_sync`,
+  default) which executes all side effects synchronously, within the same
+  process as caller, asynchronous (`:async`), executing side effects in their
+  own processes and not waiting for them to complete executing, and synchronous
+  (`:sync`) which block until all processes executing event handlers complete.
   The wait time in case of synchronous publish is limited by timeout setup via
   `sync_timeout` option, expressed in milliseconds (defaults to 5000). Any
-  handler call running for longer than the setup timeout is killed.
+  handler execution process running for longer than the setup timeout is killed.
 
   ### Buffering
 
@@ -203,14 +205,12 @@ defmodule Trolleybus do
         ...
       end)
 
-  One important thing to note is the different way the events are published in
-  test environment. Instead of spawning tasks, direct calls to respective
-  handlers are made. This assures the handler code is executed within the same
-  process as test and eliminates the problem coming with testing processes
-  - especially Ecto sandbox allowance. This behavior is enabled via additional
-  `full_sync` option (keeping in mind that it's a different thing from publishing
-  with `async: false` - synchronous publishing only assures that the current
-  process will wait for event handlers to complete, with a timeout).
+  One important thing to note is that publish calls in `test` Mix environment
+  are always run in `:full_sync` mode. This behavior can be overridden when
+  we want to have events published asynchronously in tests by passing
+  `mode_override: nil` in options to `publish/1`. The intent here is avoiding
+  any issues related to running handlers in a separate process - like having
+  to explicitly handle Ecto sandbox allowance.
 
   ## Nesting transactions
 
@@ -375,21 +375,31 @@ defmodule Trolleybus do
 
   defp publish_directly(event, opts) do
     %event_type{} = event
-    full_sync? = Keyword.get(opts, :full_sync, Mix.env() == :test)
-    async? = Keyword.get(opts, :async, true)
+
+    mode_override =
+      Keyword.get(
+        opts,
+        :mode_override,
+        if Mix.env() == :test do
+          :full_sync
+        end
+      )
+
+    mode = mode_override || Keyword.get(opts, :mode, :full_sync)
+
     sync_timeout = Keyword.get(opts, :sync_timeout, 5_000)
 
     handlers = event_type.__handlers__()
 
-    cond do
-      full_sync? ->
+    case mode do
+      :full_sync ->
         Enum.each(handlers, &run_handler(&1, event))
 
-      async? ->
-        run_handlers_asynchronously(handlers, event)
-
-      true ->
+      :sync ->
         run_handlers_synchronously(handlers, event, sync_timeout)
+
+      :async ->
+        run_handlers_asynchronously(handlers, event)
     end
   end
 
