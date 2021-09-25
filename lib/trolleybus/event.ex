@@ -120,6 +120,7 @@ defmodule Trolleybus.Event do
 
       @impl true
       def cast!(event) do
+        Trolleybus.Event.validate_handlers!(__MODULE__, __handlers__())
         Trolleybus.Event.cast_event!(event)
       end
     end
@@ -205,6 +206,28 @@ defmodule Trolleybus.Event do
     end
   end
 
+  @spec validate_handlers!(module(), [module()]) :: :ok | no_return()
+  def validate_handlers!(module, handlers) do
+    {handlers, wrong_handlers} =
+      Enum.split_with(handlers, &function_exported?(&1, :__handled_events__, 0))
+
+    no_clause_handlers = Enum.reject(handlers, &(module in &1.__handled_events__()))
+
+    if wrong_handlers != [] or no_clause_handlers != [] do
+      error =
+        "#{inspect(module)} has invalid handlers configured.\n"
+        |> append_handler_errors(wrong_handlers, "Following modules are not valid handlers")
+        |> append_handler_errors(
+          no_clause_handlers,
+          "Following handlers are missing clause for the event"
+        )
+
+      raise Trolleybus.Event.Error, message: error
+    end
+
+    :ok
+  end
+
   @spec cast_event!(event) :: event | no_return() when event: struct()
   def cast_event!(event) do
     %event_module{} = event
@@ -214,15 +237,49 @@ defmodule Trolleybus.Event do
       |> Ecto.Changeset.cast(Map.from_struct(event), event_module.__scalar_fields__())
       |> cast_struct_fields(event_module.__struct_fields__())
       |> Ecto.Changeset.validate_required(event_module.__required_fields__())
-      |> validate_handlers(event_module, event_module.__handlers__())
 
     if changeset.valid? do
       Ecto.Changeset.apply_changes(changeset)
     else
+      errors = build_cast_errors_list(changeset)
+
       raise Trolleybus.Event.Error,
-        message: "Event is invalid: #{inspect(changeset.errors)}. Event: #{inspect(event)}",
-        errors: changeset.errors
+        message: """
+        #{inspect(event_module)} is invalid:
+
+        #{errors}
+
+        Event:
+
+        #{inspect(event)}
+        """
     end
+  end
+
+  defp append_handler_errors(existing_error, [], _message) do
+    existing_error
+  end
+
+  defp append_handler_errors(existing_error, bad_handlers, message) do
+    bad_handlers_list =
+      bad_handlers
+      |> Enum.map(&"- #{inspect(&1)}")
+      |> Enum.join("\n")
+
+    "#{existing_error}\n#{message}:\n#{bad_handlers_list}"
+  end
+
+  defp build_cast_errors_list(changeset) do
+    errors =
+      Ecto.Changeset.traverse_errors(changeset, fn {message, opts} ->
+        Enum.reduce(opts, message, fn {key, value}, acc ->
+          String.replace(acc, "%{#{key}}", to_string(value))
+        end)
+      end)
+
+    errors
+    |> Enum.map(fn {key, errors} -> "- #{key}: #{Enum.join(errors, ", ")}" end)
+    |> Enum.join("\n")
   end
 
   defp cast_struct_fields(changeset, struct_fields) do
@@ -241,24 +298,5 @@ defmodule Trolleybus.Event do
           )
       end
     end)
-  end
-
-  defp validate_handlers(changeset, event_module, handlers) do
-    {handlers, wrong_handlers} =
-      Enum.split_with(handlers, &function_exported?(&1, :__handled_events__, 0))
-
-    no_clause_handlers = Enum.reject(handlers, &(event_module in &1.__handled_events__()))
-
-    changeset
-    |> maybe_add_handlers_error("are not valid handlers", wrong_handlers)
-    |> maybe_add_handlers_error("do not support this event", no_clause_handlers)
-  end
-
-  defp maybe_add_handlers_error(changeset, _, []) do
-    changeset
-  end
-
-  defp maybe_add_handlers_error(changeset, message, bad_handlers) do
-    Ecto.Changeset.add_error(changeset, :handlers, message, handlers: bad_handlers)
   end
 end

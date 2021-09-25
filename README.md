@@ -7,7 +7,8 @@ Local, application-level PubSub API for dispatching side effects.
 ## TODOs
 
 - [ ] make event macro generate typespecs for the struct as well
-- [ ] turn event handler clause validation into a compile-time event
+- [x] ~turn event handler clause validation into a compile-time event~ couldn't accomplish this;
+      refactored event handling though and made error messages slightly more user friendly
 - [x] tighten event handler clause check to enforce exhaustive matches on events
 - [x] make `full_sync?` first-class option and make it a default
 - [ ] polish up documentation

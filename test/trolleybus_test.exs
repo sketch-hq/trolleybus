@@ -141,8 +141,14 @@ defmodule TrolleybusTest do
     end
 
     test "fails for a hadler missing clause for the event" do
-      assert_raise Trolleybus.Event.Error, ~r/do not support this event/, fn ->
+      assert_raise Trolleybus.Event.Error, ~r/are missing clause for the event/, fn ->
         Trolleybus.publish(%EventWithNonSupportingHandler{field1: "foo"})
+      end
+    end
+
+    test "fails for event failing validation" do
+      assert_raise Trolleybus.Event.Error, ~r/Event1 is invalid/, fn ->
+        Trolleybus.publish(%Event1{explode?: 123})
       end
     end
   end
