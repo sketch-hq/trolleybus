@@ -119,7 +119,6 @@ defmodule Trolleybus.Event do
     {:utc_datetime_usec, quote(do: DateTime.t())}
   ]
 
-  @callback cast!(event) :: event | no_return() when event: struct()
   @callback __handlers__() :: [module()]
   @callback __scalar_fields__() :: [atom()]
   @callback __struct_fields__() :: [{atom(), module()}]
@@ -139,7 +138,7 @@ defmodule Trolleybus.Event do
 
       import Trolleybus.Event, only: [handler: 1, message: 1, field: 2, field: 3]
 
-      @impl true
+      @spec cast!(t()) :: t() | no_return()
       def cast!(event) do
         Trolleybus.Event.validate_handlers!(__MODULE__, __handlers__())
         Trolleybus.Event.cast_event!(event)
