@@ -8,8 +8,15 @@ defmodule Mix.Tasks.Trolleybus.Routes do
   use Mix.Task
 
   @impl true
-  def run([app_name]) do
-    app_name = String.to_existing_atom(app_name)
+  def run(args) do
+    Mix.Task.run("compile", args)
+    Mix.Task.reenable("trolleybus.routes")
+
+    app_name =
+      Mix.Project.config()
+      |> Keyword.fetch!(:app)
+
+    :ok = Application.ensure_loaded(app_name)
 
     IO.puts("")
 

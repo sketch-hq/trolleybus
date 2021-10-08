@@ -84,7 +84,7 @@ defmodule Trolleybus.Event do
   In order to print all events and associated handlers in the project,
   a dedicated mix task can be run:
 
-      mix trolleybus.routes [app_name]
+      mix trolleybus.routes
 
   The output has a following form:
 
