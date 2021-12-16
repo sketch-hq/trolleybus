@@ -174,6 +174,11 @@ defmodule Trolleybus.Event do
 
             {:map, quote(do: map())}
 
+          {:array, %module{}} ->
+            Module.put_attribute(__MODULE__, :struct_fields, {name, {:array, module}})
+
+            {{:array, :map}, quote(do: [map()])}
+
           other ->
             Module.put_attribute(__MODULE__, :scalar_fields, name)
 
@@ -339,19 +344,44 @@ defmodule Trolleybus.Event do
 
   defp cast_struct_fields(changeset, struct_fields) do
     Enum.reduce(struct_fields, changeset, fn {name, type}, changeset ->
-      case Map.get(changeset.params, Atom.to_string(name)) do
-        nil ->
-          changeset
-
-        %^type{} = struct ->
-          Ecto.Changeset.put_change(changeset, name, struct)
-
-        other ->
-          Ecto.Changeset.add_error(changeset, name, "has invalid type",
-            expected_struct: type,
-            got: other
-          )
-      end
+      check_struct_type(changeset, name, type)
     end)
+  end
+
+  defp check_struct_type(changeset, name, {:array, type}) do
+    case Map.get(changeset.params, Atom.to_string(name)) do
+      nil ->
+        changeset
+
+      list when is_list(list) ->
+        if Enum.all?(list, &(is_map(&1) and Map.get(&1, :__struct__) == type)) do
+          Ecto.Changeset.put_change(changeset, name, list)
+        else
+          add_invalid_struct_error(changeset, name, {:array, type}, list)
+        end
+
+      other ->
+        add_invalid_struct_error(changeset, name, type, other)
+    end
+  end
+
+  defp check_struct_type(changeset, name, type) do
+    case Map.get(changeset.params, Atom.to_string(name)) do
+      nil ->
+        changeset
+
+      %^type{} = struct ->
+        Ecto.Changeset.put_change(changeset, name, struct)
+
+      other ->
+        add_invalid_struct_error(changeset, name, type, other)
+    end
+  end
+
+  defp add_invalid_struct_error(changeset, name, expected, got) do
+    Ecto.Changeset.add_error(changeset, name, "has invalid type",
+      expected_struct: inspect(expected),
+      got: inspect(got)
+    )
   end
 end

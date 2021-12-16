@@ -16,6 +16,7 @@ defmodule TrolleybusTest do
     message do
       field(:field1, :string)
       field(:field2, %TrolleybusTest.SomeStruct{}, required: false)
+      field(:array_field, {:array, %TrolleybusTest.SomeStruct{}}, required: false)
       field(:binary_field, :binary, required: false)
       field(:explode?, :boolean, default: false)
       field(:timeout?, :boolean, default: false)
@@ -124,6 +125,7 @@ defmodule TrolleybusTest do
                         Trolleybus.publish(%Event1{
                           field1: "foo",
                           binary_field: pid_binary,
+                          array_field: [%SomeStruct{}],
                           explode?: true
                         })
              end) =~
@@ -131,7 +133,13 @@ defmodule TrolleybusTest do
 
       refute_received {:published_handler1, _}
       assert_received {:published_handler2, event}
-      assert %Event1{field1: "foo", binary_field: ^pid_binary, explode?: true} = event
+
+      assert %Event1{
+               field1: "foo",
+               binary_field: ^pid_binary,
+               array_field: [%SomeStruct{}],
+               explode?: true
+             } = event
     end
 
     test "fails for non-existent handler in event definition" do
@@ -149,6 +157,10 @@ defmodule TrolleybusTest do
     test "fails for event failing validation" do
       assert_raise Trolleybus.Event.Error, ~r/Event1 is invalid/, fn ->
         Trolleybus.publish(%Event1{explode?: 123})
+      end
+
+      assert_raise Trolleybus.Event.Error, ~r/Event1 is invalid/, fn ->
+        Trolleybus.publish(%Event1{array_field: [%SomeStruct{}, :bad]})
       end
     end
   end
