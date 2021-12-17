@@ -182,19 +182,14 @@ defmodule Trolleybus.Event do
           other ->
             Module.put_attribute(__MODULE__, :scalar_fields, name)
 
-            if is_atom(other) and function_exported?(other, :type, 0) do
-              {other, Trolleybus.Event.to_spec_type(other, other.type())}
-            else
-              {other, Trolleybus.Event.to_spec_type(__MODULE__, other)}
-            end
+            {other, {:incomplete, other}}
         end
 
       if Keyword.get(opts, :required, true) do
         Module.put_attribute(__MODULE__, :required_fields, name)
-        Module.put_attribute(__MODULE__, :spec_definition, {name, spec_type})
-      else
-        Module.put_attribute(__MODULE__, :spec_definition, {name, {:|, [], [spec_type, nil]}})
       end
+
+      Module.put_attribute(__MODULE__, :spec_definition, {name, spec_type})
 
       default_value = opts[:default]
 
@@ -211,6 +206,8 @@ defmodule Trolleybus.Event do
     struct_definition = Module.get_attribute(__CALLER__.module, :struct_definition, [])
     message_definition = Module.get_attribute(__CALLER__.module, :message_definition, [])
     spec_definition = Module.get_attribute(__CALLER__.module, :spec_definition, [])
+
+    spec_definition = generate_spec(spec_definition, required_fields)
 
     quote do
       defstruct unquote(struct_definition)
@@ -294,8 +291,28 @@ defmodule Trolleybus.Event do
     end
   end
 
-  @spec to_spec_type(module(), any()) :: any()
-  def to_spec_type(wrapping_module, type) do
+  defp generate_spec(definitions, required_fields) do
+    Enum.map(definitions, fn
+      {name, {:incomplete, type}} ->
+        spec_type =
+          if is_atom(type) and function_exported?(type, :type, 0) do
+            to_spec_type(type, type.type())
+          else
+            to_spec_type(__MODULE__, type)
+          end
+
+        if name in required_fields do
+          {name, spec_type}
+        else
+          {name, {:|, [], [spec_type, nil]}}
+        end
+
+      {name, spec_type} ->
+        {name, spec_type}
+    end)
+  end
+
+  defp to_spec_type(wrapping_module, type) do
     result =
       Enum.find_value(@spec_mappings, :invalid, fn {ecto_type, spec_type} ->
         case type do
