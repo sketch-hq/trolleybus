@@ -98,27 +98,6 @@ defmodule Trolleybus.Event do
       ...
   """
 
-  # Type mappings extracted from current Ecto.Schema documentation.
-  @spec_mappings [
-    {:id, quote(do: integer())},
-    {:binary_id, quote(do: binary())},
-    {:integer, quote(do: integer())},
-    {:float, quote(do: float())},
-    {:boolean, quote(do: boolean())},
-    {:string, quote(do: String.t())},
-    {:binary, quote(do: binary())},
-    {:array, quote(do: list())},
-    {:map, quote(do: map())},
-    {:decimal, quote(do: Decimal.t())},
-    {:date, quote(do: Date.t())},
-    {:time, quote(do: Time.t())},
-    {:time_usec, quote(do: Time.t())},
-    {:naive_datetime, quote(do: NaiveDateTime.t())},
-    {:naive_datetime_usec, quote(do: NaiveDateTime.t())},
-    {:utc_datetime, quote(do: DateTime.t())},
-    {:utc_datetime_usec, quote(do: DateTime.t())}
-  ]
-
   @callback __handlers__() :: [module()]
   @callback __scalar_fields__() :: [atom()]
   @callback __struct_fields__() :: [{atom(), module()}]
@@ -138,7 +117,7 @@ defmodule Trolleybus.Event do
 
       import Trolleybus.Event, only: [handler: 1, message: 1, field: 2, field: 3]
 
-      @spec cast!(t()) :: t() | no_return()
+      @spec cast!(map()) :: map()
       def cast!(event) do
         Trolleybus.Event.validate_handlers!(__MODULE__, __handlers__())
         Trolleybus.Event.cast_event!(event)
@@ -159,7 +138,6 @@ defmodule Trolleybus.Event do
       Module.register_attribute(__MODULE__, :required_fields, accumulate: true)
       Module.register_attribute(__MODULE__, :message_definition, accumulate: true)
       Module.register_attribute(__MODULE__, :struct_definition, accumulate: true)
-      Module.register_attribute(__MODULE__, :spec_definition, accumulate: true)
 
       unquote(body)
     end
@@ -167,29 +145,27 @@ defmodule Trolleybus.Event do
 
   defmacro field(name, type, opts \\ []) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
-      {type, spec_type} =
+      type =
         case type do
           %module{} ->
             Module.put_attribute(__MODULE__, :struct_fields, {name, module})
 
-            {:map, quote(do: map())}
+            :map
 
           {:array, %module{}} ->
             Module.put_attribute(__MODULE__, :struct_fields, {name, {:array, module}})
 
-            {{:array, :map}, quote(do: [map()])}
+            {:array, :map}
 
           other ->
             Module.put_attribute(__MODULE__, :scalar_fields, name)
 
-            {other, {:incomplete, other}}
+            other
         end
 
       if Keyword.get(opts, :required, true) do
         Module.put_attribute(__MODULE__, :required_fields, name)
       end
-
-      Module.put_attribute(__MODULE__, :spec_definition, {name, spec_type})
 
       default_value = opts[:default]
 
@@ -205,14 +181,9 @@ defmodule Trolleybus.Event do
     required_fields = Module.get_attribute(__CALLER__.module, :required_fields, [])
     struct_definition = Module.get_attribute(__CALLER__.module, :struct_definition, [])
     message_definition = Module.get_attribute(__CALLER__.module, :message_definition, [])
-    spec_definition = Module.get_attribute(__CALLER__.module, :spec_definition, [])
-
-    spec_definition = generate_spec(spec_definition, required_fields)
 
     quote do
       defstruct unquote(struct_definition)
-
-      @type t() :: %__MODULE__{unquote_splicing(spec_definition)}
 
       @impl true
       def __handlers__() do
@@ -289,48 +260,6 @@ defmodule Trolleybus.Event do
         #{inspect(event)}
         """
     end
-  end
-
-  defp generate_spec(definitions, required_fields) do
-    Enum.map(definitions, fn
-      {name, {:incomplete, type}} ->
-        spec_type =
-          if is_atom(type) and function_exported?(type, :type, 0) do
-            to_spec_type(type, type.type())
-          else
-            to_spec_type(__MODULE__, type)
-          end
-
-        if name in required_fields do
-          {name, spec_type}
-        else
-          {name, {:|, [], [spec_type, nil]}}
-        end
-
-      {name, spec_type} ->
-        {name, spec_type}
-    end)
-  end
-
-  defp to_spec_type(wrapping_module, type) do
-    result =
-      Enum.find_value(@spec_mappings, :invalid, fn {ecto_type, spec_type} ->
-        case type do
-          {^ecto_type, _} -> spec_type
-          ^ecto_type -> spec_type
-          _ -> nil
-        end
-      end)
-
-    if result == :invalid do
-      raise Trolleybus.Event.Error,
-        message: """
-        Type declaration error in #{inspect(wrapping_module)}: \
-        #{inspect(type)} is not a valid field type.
-        """
-    end
-
-    result
   end
 
   defp append_handler_errors(existing_error, [], _message) do
