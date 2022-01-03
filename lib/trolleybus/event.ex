@@ -100,7 +100,7 @@ defmodule Trolleybus.Event do
 
   @callback __handlers__() :: [module()]
   @callback __scalar_fields__() :: [atom()]
-  @callback __struct_fields__() :: [{atom(), module()}]
+  @callback __struct_fields__() :: [{atom(), module() | {:array, module()}}]
   @callback __required_fields__() :: [atom()]
   @callback __message_definition__() :: %{atom() => atom() | module()}
 
