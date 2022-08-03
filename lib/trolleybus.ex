@@ -205,7 +205,7 @@ defmodule Trolleybus do
         ...
       end)
 
-  One important thing to note is that the mode can be overriden in all
+  One important thing to note is that the mode can be overridden in all
   circumstances using Application configuration:
 
       config :trolleybus, mode_override: :full_sync
