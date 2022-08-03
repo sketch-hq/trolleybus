@@ -64,7 +64,6 @@ defmodule TrolleybusAsyncTest do
 
       assert :ok =
                Trolleybus.publish(%Event{field1: "foo", binary_field: pid_binary},
-                 mode_override: nil,
                  mode: :async
                )
 
@@ -95,7 +94,6 @@ defmodule TrolleybusAsyncTest do
                             binary_field: pid_binary,
                             explode?: true
                           },
-                          mode_override: nil,
                           mode: :async
                         )
 
@@ -117,7 +115,6 @@ defmodule TrolleybusAsyncTest do
                             binary_field: pid_binary,
                             explode?: true
                           },
-                          mode_override: nil,
                           mode: :sync
                         )
              end) =~
@@ -136,7 +133,6 @@ defmodule TrolleybusAsyncTest do
           assert :ok =
                    Trolleybus.publish(
                      %Event{field1: "foo", binary_field: pid_binary, timeout?: true},
-                     mode_override: nil,
                      mode: :sync,
                      sync_timeout: 100
                    )

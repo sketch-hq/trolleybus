@@ -205,12 +205,17 @@ defmodule Trolleybus do
         ...
       end)
 
-  One important thing to note is that publish calls in `test` Mix environment
-  are always run in `:full_sync` mode. This behavior can be overridden when
-  we want to have events published asynchronously in tests by passing
-  `mode_override: nil` in options to `publish/1`. The intent here is avoiding
-  any issues related to running handlers in a separate process - like having
-  to explicitly handle Ecto sandbox allowance.
+  One important thing to note is that the mode can be overriden in all
+  circumstances using Application configuration:
+
+      config :trolleybus, mode_override: :full_sync
+
+
+  This allows users to force all events to be published using a given mode, for
+  example `:full_sync` in `config/test.exs` to make testing side effects
+  simpler. The intent here is avoiding any issues related to running handlers
+  in a separate process - like having to explicitly handle Ecto sandbox
+  allowance.
 
   ## Nesting transactions
 
@@ -376,16 +381,14 @@ defmodule Trolleybus do
   defp publish_directly(event, opts) do
     %event_type{} = event
 
-    mode_override =
-      Keyword.get(
-        opts,
-        :mode_override,
-        if Mix.env() == :test do
-          :full_sync
-        end
-      )
+    # Users can specify a mode via `opts`
+    default_mode = Keyword.get(opts, :mode, :full_sync)
 
-    mode = mode_override || Keyword.get(opts, :mode, :full_sync)
+    # The mode can also be overridden in all circumstances using application
+    # config.
+    # This is useful, for example, to make sure that events are always published
+    # synchronously in tests to avoid race conditions.
+    mode = Application.get_env(:trolleybus, :mode_override, default_mode)
 
     sync_timeout = Keyword.get(opts, :sync_timeout, 5_000)
 
