@@ -4,6 +4,8 @@
 
 Local, application-level PubSub API for dispatching side effects.
 
+Full documentation can be found on [Hex](https://hexdocs.pm/trolleybus/).
+
 ## Installation
 
 The package can be installed by adding `trolleybus` to your list of

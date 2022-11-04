@@ -43,7 +43,7 @@ defmodule Trolleybus.MixProject do
 
   defp docs do
     [
-      main: "readme",
+      main: "Trolleybus",
       source_url: @source_url,
       source_ref: "v#{@version}",
       extras: [
