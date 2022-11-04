@@ -1,22 +1,13 @@
 # Trolleybus
 
+[![CI](https://github.com/sketch-hq/trolleybus/actions/workflows/ci.yml/badge.svg)](https://github.com/sketch-hq/trolleybus/actions/workflows/ci.yml) [![Hex.pm](https://img.shields.io/hexpm/v/trolleybus.svg)](https://hex.pm/packages/trolleybus) [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/trolleybus/)
+
 Local, application-level PubSub API for dispatching side effects.
-
-**TODO: More extensive description**
-
-## TODOs
-
-- [x] make event macro generate typespecs for the struct as well
-- [x] ~turn event handler clause validation into a compile-time event~ couldn't accomplish this;
-      refactored event handling though and made error messages slightly more user friendly
-- [x] tighten event handler clause check to enforce exhaustive matches on events
-- [x] make `full_sync?` first-class option and make it a default
-- [ ] polish up documentation
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `trolleybus` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `trolleybus` to your list of
+dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -26,7 +17,27 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/trolleybus](https://hexdocs.pm/trolleybus).
+## Running tests
 
+Clone the repo and fetch its dependencies:
+
+```bash
+git clone https://github.com/sketch-hq/trolleybus.git
+cd trolleybus
+mix deps.get
+mix test
+```
+
+## License
+
+Copyright (c) 2022 Sketch B.V.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.

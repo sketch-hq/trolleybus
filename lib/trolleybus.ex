@@ -65,7 +65,7 @@ defmodule Trolleybus do
         ...
       end
 
-  Finally, we publish an event instead of calling `Mailer` and `Capacitor`
+  Finally, we publish an event instead of calling `Emails` and `Webhooks`
   directly:
 
       alias App.Documents.Events
