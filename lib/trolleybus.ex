@@ -18,7 +18,7 @@ defmodule Trolleybus do
         ...
       end
 
-  First, we define the event:
+  First, we define the event using `Trolleybus.Event`:
 
       defmodule App.Documents.Events.MembershipInviteAccepted do
         use Trolleybus.Event
@@ -34,7 +34,8 @@ defmodule Trolleybus do
         end
       end
 
-  Next, we define new or extend existing event handlers:
+  Next, we define new or extend existing event handlers using
+  `Trolleybus.Handler`:
 
       defmodule App.Documents.EmailEventHandler do
         use Trolleybus.Handler
