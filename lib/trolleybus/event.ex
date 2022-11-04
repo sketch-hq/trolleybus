@@ -267,10 +267,7 @@ defmodule Trolleybus.Event do
   end
 
   defp append_handler_errors(existing_error, bad_handlers, message) do
-    bad_handlers_list =
-      bad_handlers
-      |> Enum.map(&"- #{inspect(&1)}")
-      |> Enum.join("\n")
+    bad_handlers_list = Enum.map_join(bad_handlers, "\n", &"- #{inspect(&1)}")
 
     "#{existing_error}\n#{message}:\n#{bad_handlers_list}"
   end
@@ -283,9 +280,7 @@ defmodule Trolleybus.Event do
         end)
       end)
 
-    errors
-    |> Enum.map(fn {key, errors} -> "- #{key}: #{Enum.join(errors, ", ")}" end)
-    |> Enum.join("\n")
+    Enum.map_join(errors, "\n", fn {key, errors} -> "- #{key}: #{Enum.join(errors, ", ")}" end)
   end
 
   defp cast_struct_fields(changeset, struct_fields) do
