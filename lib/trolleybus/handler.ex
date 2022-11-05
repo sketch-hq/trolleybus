@@ -62,6 +62,10 @@ defmodule Trolleybus.Handler do
   @callback handle_event(struct()) :: term()
 
   defmodule Error do
+    @moduledoc """
+    Error raised on invalid handler definition.
+    """
+
     defexception [:message]
   end
 

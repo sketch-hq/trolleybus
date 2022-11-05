@@ -99,6 +99,11 @@ defmodule Trolleybus.Event do
   """
 
   defmodule Error do
+    @moduledoc """
+    Error raised on either invalid event module configuration or event struct
+    failing validation.
+    """
+
     defexception [:message, :errors]
   end
 
