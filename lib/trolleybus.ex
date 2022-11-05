@@ -260,6 +260,163 @@ defmodule Trolleybus do
   @name_field :bus_current_buffer
   @stack_field :bus_stack
 
+  @doc """
+  Publishes event.
+
+  ## Example
+
+      :ok = Trolleybus.publish(%SomeEvent{name: "value"})
+      :ok = Trolleybus.publish(%OtherEvent{flag: true}, mode: :async)
+      :ok = Trolleybus.publish(
+        %AnotherEvent{number: 123}, mode: :sync, sync_timeout: 1_000
+      )
+
+  ## Options
+
+    * `:mode` - Event dispatch mode. Can be one of `:full_sync`, `:async`
+      or `:sync`. See "Dispatch modes" below for detailed explanation.
+      Default: `:full_sync`.
+    * `:sync_timeout` - Timeout in milliseconds after which synchronous
+      dispatch is cancelled and handler processes still in progress are
+      killed. Works only for `:sync` mode. Default: 5000
+
+  ## Disptach modes
+
+  Publishing may be executed in three modes:
+
+    * `:full_sync` - Executes all handlers sequentially and synchronously,
+      within the same process as caller.
+    * `:async` - Executes handlers in separate processes fully asynchronously,
+      not waiting for them to finish executing.
+    * `:sync` - Executes handlers in separate processes in parallel and waits
+      until they complete executing. Waiting time is determined by
+      `:sync_timeout` option. Handler processes running past timeout are killed.
+  """
+  @spec publish(struct(), Keyword.t()) :: :ok
+  def publish(event, opts \\ []) do
+    %event_module{} = event
+
+    event = event_module.cast!(event)
+
+    case current() do
+      {:buffer, pid} ->
+        publish_to_buffer(pid, event, opts)
+
+      __MODULE__ ->
+        publish_directly(event, opts)
+    end
+  end
+
+  @doc """
+  Returns events published in the given function.
+
+  The events are returned along with the result of the function, without
+  dispatching them to defined handlers.
+
+  Order of events in the list is always consistent with order of publishing
+  inside the wrapped function.
+
+  ## Example
+
+      {"result", [{%SomeEvent{}, []},
+                  {%OtherEvent{}, mode: :async},
+                  {%AnotherEvent{}, mode: :sync, sync_timeout: 1_000}]} =
+        Trolleybus.buffered(fn ->
+          Trolleybus.publish(%SomeEvent{name: "value"})
+          Trolleybus.publish(%OtherEvent{flag: true}, mode: :async)
+          Trolleybus.publish(%AnotherEvent{number: 123}, mode: :sync, sync_timeout: 1_000)
+
+          "result"
+        end)
+  """
+  @spec buffered((() -> term())) :: {term(), [{module(), Keyword.t()}]}
+  def buffered(fun) when is_function(fun, 0) do
+    buffer = open_buffer()
+
+    try do
+      result = fun.()
+      {result, get_buffer()}
+    after
+      if current() == buffer do
+        close_buffer()
+      end
+    end
+  end
+
+  @doc """
+  Discards events published in the given function without dispatching them
+  to defined handlers.
+
+  ## Example
+
+      "result" =
+        Trolleybus.muffled(fn ->
+          Trolleybus.publish(%SomeEvent{name: "value"})
+
+          "result"
+        end)
+  """
+  @spec muffled((() -> term())) :: term()
+  def muffled(fun) when is_function(fun, 0) do
+    buffer = open_buffer()
+
+    try do
+      fun.()
+    after
+      if current() == buffer do
+        close_buffer()
+      end
+    end
+  end
+
+  @doc """
+  Lists all published but not yet dispatched events so far.
+
+  Order of events in the list is always consistent with order of publishing
+  inside the wrapped function.
+
+  ## Example
+
+      Trolleybus.muffled(fn ->
+        Trolleybus.publish(%SomeEvent{name: "value"})
+        Trolleybus.publish(%OtherEvent{flag: true}, mode: :async)
+
+        [{%SomeEvent{}, []},
+         {%OtherEvent{}, mode: :async}] = Trolleybus.get_buffer()
+
+        Trolleybus.publish(%AnotherEvent{number: 123}, mode: :sync, sync_timeout: 1_000)
+
+        [{%SomeEvent{}, []},
+         {%OtherEvent{}, mode: :async},
+         {%AnotherEvent{}, mode: :sync, sync_timeout: 1_000}] = Trolleybus.get_buffer()
+      end)
+  """
+  @spec get_buffer() :: [{module(), Keyword.t()}]
+  def get_buffer() do
+    case current() do
+      {:buffer, pid} ->
+        Agent.get(pid, fn buffer -> Enum.reverse(buffer) end)
+
+      __MODULE__ ->
+        raise "No buffer to get."
+    end
+  end
+
+  @doc """
+  Dispatches published events after running the given function.
+
+  Dispatching to event handlers is done only if the result is in
+  `{:ok, ...}` tuple format. Otherwise, events are discarded.
+
+  ## Example
+
+      {:ok, "result"} =
+        Trolleybus.transaction(fn ->
+          Trolleybus.publish(%SomeEvent{name: "value"})
+
+          {:ok, "result"}
+        end)
+  """
   @spec transaction((() -> term())) :: term()
   def transaction(fun) when is_function(fun, 0) do
     buffer = open_buffer()
@@ -277,59 +434,6 @@ defmodule Trolleybus do
       if current() == buffer do
         close_buffer()
       end
-    end
-  end
-
-  @spec buffered((() -> term())) :: {term(), [{module(), Keyword.t()}]}
-  def buffered(fun) when is_function(fun, 0) do
-    buffer = open_buffer()
-
-    try do
-      result = fun.()
-      {result, get_buffer()}
-    after
-      if current() == buffer do
-        close_buffer()
-      end
-    end
-  end
-
-  @spec muffled((() -> term())) :: term()
-  def muffled(fun) when is_function(fun, 0) do
-    buffer = open_buffer()
-
-    try do
-      fun.()
-    after
-      if current() == buffer do
-        close_buffer()
-      end
-    end
-  end
-
-  @spec get_buffer() :: [{module(), Keyword.t()}]
-  def get_buffer() do
-    case current() do
-      {:buffer, pid} ->
-        Agent.get(pid, fn buffer -> Enum.reverse(buffer) end)
-
-      __MODULE__ ->
-        raise "No buffer to get."
-    end
-  end
-
-  @spec publish(struct(), Keyword.t()) :: :ok
-  def publish(event, opts \\ []) do
-    %event_module{} = event
-
-    event = event_module.cast!(event)
-
-    case current() do
-      {:buffer, pid} ->
-        publish_to_buffer(pid, event, opts)
-
-      __MODULE__ ->
-        publish_directly(event, opts)
     end
   end
 
