@@ -53,7 +53,6 @@ defmodule Trolleybus.Handler do
   """
 
   @callback handle_event(struct()) :: term()
-  @callback __handled_events__() :: [module()]
 
   defmodule Error do
     defexception [:message]
@@ -106,14 +105,14 @@ defmodule Trolleybus.Handler do
       |> Enum.uniq()
 
     quote do
-      @impl true
+      @spec __handled_events__() :: [module()]
       def __handled_events__() do
         unquote(handled_events)
       end
     end
   end
 
-  def enforce_map_match_pattern!(contents, pattern) when is_list(contents) do
+  defp enforce_map_match_pattern!(contents, pattern) when is_list(contents) do
     Enum.each(contents, fn
       {label, {binding, _, nil}} when is_atom(label) and is_atom(binding) ->
         :ok
@@ -123,11 +122,11 @@ defmodule Trolleybus.Handler do
     end)
   end
 
-  def enforce_map_match_pattern!(_contents, pattern) do
+  defp enforce_map_match_pattern!(_contents, pattern) do
     raise_pattern_error!(pattern, "Map contents can only bind keys to variables.")
   end
 
-  def raise_pattern_error!(pattern, message) do
+  defp raise_pattern_error!(pattern, message) do
     pattern_string = Macro.to_string(pattern)
 
     raise Trolleybus.Handler.Error,

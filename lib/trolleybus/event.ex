@@ -98,12 +98,6 @@ defmodule Trolleybus.Event do
       ...
   """
 
-  @callback __handlers__() :: [module()]
-  @callback __scalar_fields__() :: [atom()]
-  @callback __struct_fields__() :: [{atom(), module() | {:array, module()}}]
-  @callback __required_fields__() :: [atom()]
-  @callback __message_definition__() :: %{atom() => atom() | module()}
-
   defmodule Error do
     defexception [:message, :errors]
   end
@@ -112,7 +106,6 @@ defmodule Trolleybus.Event do
     quote location: :keep do
       Module.register_attribute(__MODULE__, :handlers, accumulate: true)
 
-      @behaviour Trolleybus.Event
       @before_compile Trolleybus.Event
 
       import Trolleybus.Event, only: [handler: 1, message: 1, field: 2, field: 3]
@@ -185,33 +178,34 @@ defmodule Trolleybus.Event do
     quote do
       defstruct unquote(struct_definition)
 
-      @impl true
+      @spec __handlers__() :: [module()]
       def __handlers__() do
         unquote(handlers)
       end
 
-      @impl true
+      @spec __scalar_fields__() :: [atom()]
       def __scalar_fields__() do
         unquote(scalar_fields)
       end
 
-      @impl true
+      @spec __struct_fields__() :: [{atom(), module() | {:array, module()}}]
       def __struct_fields__() do
         unquote(struct_fields)
       end
 
-      @impl true
+      @spec __required_fields__() :: [atom()]
       def __required_fields__() do
         unquote(required_fields)
       end
 
-      @impl true
+      @spec __message_definition__() :: %{atom() => atom() | module()}
       def __message_definition__() do
         Map.new(unquote(message_definition))
       end
     end
   end
 
+  @doc false
   @spec validate_handlers!(module(), [module()]) :: :ok | no_return()
   def validate_handlers!(module, handlers) do
     {handlers, wrong_handlers} =
@@ -234,6 +228,7 @@ defmodule Trolleybus.Event do
     :ok
   end
 
+  @doc false
   @spec cast_event!(event) :: event | no_return() when event: struct()
   def cast_event!(event) do
     %event_module{} = event
