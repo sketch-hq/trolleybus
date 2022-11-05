@@ -6,7 +6,7 @@ defmodule Trolleybus do
   Instead of calling side effects directly, an event is published. The event is
   then routed to one or more handlers, according to declared routing.
 
-  ## Basic example
+  ## Example
 
   Let's assume we have a code path in business logic where we want to trigger
   two side effects after core logic is done.
@@ -82,17 +82,11 @@ defmodule Trolleybus do
         ...
       end
 
-  ## Design
-
-  We are not concerned with persistence, at least for now. We can consider
-  adding it in the future, using Oban for instance.
+  ## Publishing
 
   A `publish/2` call triggers the dispatch logic for the event. The dispatch
-  iterates over all handlers provided in event's definition and passes it to
+  retrieves all handlers provided in event's definition and passes it to
   those handlers.
-
-  A dedicated process is spun up for each handler call, where handler logic
-  is executed on the event. Handlers are called in parallel.
 
   Publishing may be executed in three modes - fully synchronous (`:full_sync`,
   default) which executes all side effects synchronously, within the same
@@ -103,7 +97,12 @@ defmodule Trolleybus do
   `sync_timeout` option, expressed in milliseconds (defaults to 5000). Any
   handler execution process running for longer than the setup timeout is killed.
 
-  ### Buffering
+  For simplicity, Trolleybus is neither concerned with persistence nor retrying
+  failed handler calls. If a particular case calls for this kind of guarantees,
+  it can be realised by, for instance, making relevant handler use job processing
+  library like [Oban](https://hexdocs.pm/oban/Oban.html).
+
+  ## Buffering
 
   There are cases where publishing events may have to be either deferred or
   abandoned completely. This problem can be solved by using one of buffering
@@ -160,7 +159,21 @@ defmodule Trolleybus do
         end
       end
 
-  ## Reusing logic which publishes events
+  ## Nesting transactions
+
+  Buffered transactions wrapped with `transaction/1` can be arbitrarily nested
+  and it's guaranteed that only the outermost one will publish the events:
+
+      Trolleybus.transaction(fn -> # all events will be published
+                                   # only after this outer block finishes
+        ...
+        Trolleybus.transaction(fn ->
+          ...
+        end)
+        ...
+      end)
+
+  ## Reusing code publishing events
 
   We often want to reuse existing logic as a part of larger, more complex
   routines. The problem with that is the fact that this existing logic may
@@ -178,7 +191,7 @@ defmodule Trolleybus do
   Wrapping it this way will send all the events to a buffer which will be
   promptly discarded after the code block completes.
 
-  ## Testing for published events
+  ## Testing events
 
   When we want to test what events does a given piece of logic publish
   (instead of relying on checking side effects), we can use `buffered/1`:
@@ -217,20 +230,6 @@ defmodule Trolleybus do
   simpler. The intent here is avoiding any issues related to running handlers
   in a separate process - like having to explicitly handle Ecto sandbox
   allowance.
-
-  ## Nesting transactions
-
-  Buffered transactions wrapped with `transaction/1` can be arbitrarily nested
-  and it's guaranteed that only the outermost one will publish the events:
-
-      Trolleybus.transaction(fn -> # all events will be published
-                            # only after this outer block finishes
-        ...
-        Trolleybus.transaction(fn ->
-          ...
-        end)
-        ...
-      end)
   """
 
   alias Trolleybus.TaskSupervisor
