@@ -55,3 +55,6 @@ jobs:
 
       - run: mix credo
         if: ${{ matrix.lint }}
+
+      - run: mix dialyzer
+        if: ${{ matrix.lint }}
