@@ -257,6 +257,10 @@ defmodule Trolleybus do
 
   require Logger
 
+  @type publish_mode() :: :full_sync | :async | :sync
+
+  @type publish_option() :: {:mode, publish_mode()} | {:sync_timeout, non_neg_integer()}
+
   @name_field :bus_current_buffer
   @stack_field :bus_stack
 
@@ -292,7 +296,7 @@ defmodule Trolleybus do
       until they complete executing. Waiting time is determined by
       `:sync_timeout` option. Handler processes running past timeout are killed.
   """
-  @spec publish(struct(), Keyword.t()) :: :ok
+  @spec publish(struct(), [publish_option()]) :: :ok
   def publish(event, opts \\ []) do
     %event_module{} = event
 
@@ -329,7 +333,8 @@ defmodule Trolleybus do
           "result"
         end)
   """
-  @spec buffered((() -> term())) :: {term(), [{module(), Keyword.t()}]}
+  @spec buffered((() -> result)) :: {result, [{struct(), [publish_option()]}]}
+        when result: term()
   def buffered(fun) when is_function(fun, 0) do
     buffer = open_buffer()
 
@@ -356,7 +361,7 @@ defmodule Trolleybus do
           "result"
         end)
   """
-  @spec muffled((() -> term())) :: term()
+  @spec muffled((() -> result)) :: result when result: term()
   def muffled(fun) when is_function(fun, 0) do
     buffer = open_buffer()
 
@@ -391,7 +396,7 @@ defmodule Trolleybus do
          {%AnotherEvent{}, mode: :sync, sync_timeout: 1_000}] = Trolleybus.get_buffer()
       end)
   """
-  @spec get_buffer() :: [{module(), Keyword.t()}]
+  @spec get_buffer() :: [{struct(), publish_option()}]
   def get_buffer() do
     case current() do
       {:buffer, pid} ->
@@ -417,7 +422,7 @@ defmodule Trolleybus do
           {:ok, "result"}
         end)
   """
-  @spec transaction((() -> term())) :: term()
+  @spec transaction((() -> result)) :: result when result: term()
   def transaction(fun) when is_function(fun, 0) do
     buffer = open_buffer()
 
