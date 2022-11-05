@@ -40,7 +40,7 @@ defmodule Trolleybus.Handler do
 
   while this clause will raise an error:
 
-      def handle_event (%EventModule{field: %{} = value) do
+      def handle_event(%EventModule{field: %{} = value) do
         ...
       end
 
@@ -52,6 +52,13 @@ defmodule Trolleybus.Handler do
   all implemented handlers and guarantees exhaustive matching.
   """
 
+  @doc """
+  Defines event handler for handled events.
+
+  Each supported event is expected to be handled by a distinct function clause
+  using pattern matching. For more information on expected implementation of
+  the callback, see "Example" above.
+  """
   @callback handle_event(struct()) :: term()
 
   defmodule Error do
