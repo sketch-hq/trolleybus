@@ -2,13 +2,13 @@ defmodule Trolleybus.Event do
   @moduledoc """
   Defines an event struct for publishing via `Trolleybus`.
 
-  An event definition is composed of a number of elements:
+  An event definition is composed of a couple elements:
 
     * `handler/1` declarations - they define which handlers are called when
       event is published.
 
     * `message/1` declaration - determines the underlying struct and types
-      of fields which are validated against before publishing.
+      of fields using `field/3` validated before publishing.
 
   ## Example
 
@@ -42,60 +42,6 @@ defmodule Trolleybus.Event do
   Each event implements `cast!/1` function which is called before publishing
   it. This function returns the same event struct with casted and validated
   message parameters as well as declared handlers.
-
-  ## Handlers
-
-  The `handler/1` macro accepts a module name. That name is later validated when
-  casting the event via `cast!/1`. If handler either isn't implementing
-  `Trolleybus.Handler` behaviour or is not explicitly handling that particular
-  event, an error is raised.
-
-  ## Message shape definition
-
-  The `field/3` macro accepts three arguments:
-
-    * `name` - name of the field in the underlying struct.
-    * `type` - declares the expected type of the field value. It's validated
-      when casting the event via `cast!/1`.
-    * `opts` - additional options for the field. Currently, `required` and
-      `default` are accepted.
-
-  ## Field options
-
-    * `required` - boolean determining whether field value can be left empty
-      (`nil`). If field's `required` option is set to `true` and event is
-      instantiated and casted with that field left empty, an error is raised.
-      Defaults to: `true`.
-
-    * `default` - sets field value to the provided default when field is left
-      empty during instantating the event. Defaults to: `nil`.
-
-  ## Field types
-
-  The underlying validation logic uses `Ecto.Changeset`, so basically any type
-  accepted by `Ecto.Schema` is also accepted in message field definition.
-
-  There's a special case for passing structs - `%StructModule{}`. This is
-  because we don't want to validate exact contents of the struct, only that
-  the value passed a) is a struct and b) is of matching type.
-
-  ## Listing routes
-
-  In order to print all events and associated handlers in the project,
-  a dedicated mix task can be run:
-
-      mix trolleybus.routes
-
-  The output has a following form:
-
-      * App.Events.DocumentTransferred
-          => App.Webhooks.EventHandler
-          => App.Memberships.EmailEventHandler
-
-      * App.Events.UserInvitedToDocument
-          => App.Memberships.EmailEventHandler
-
-      ...
   """
 
   defmodule Error do
@@ -123,12 +69,25 @@ defmodule Trolleybus.Event do
     end
   end
 
+  @doc """
+  Indicates a handler the event is dispatched to.
+
+  The macro accepts a module name. That name is later validated when
+  casting the event internally via `cast!/1`. If handler either isn't
+  implementing `Trolleybus.Handler` behaviour or is not explicitly
+  handling that particular event, an error is raised.
+  """
   defmacro handler(handler_module) do
     quote do
       Module.put_attribute(__MODULE__, :handlers, unquote(handler_module))
     end
   end
 
+  @doc """
+  Defines an event struct.
+
+  Each struct field is defined using `field/3` macro.
+  """
   defmacro message(body) do
     quote do
       Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
@@ -141,6 +100,38 @@ defmodule Trolleybus.Event do
     end
   end
 
+  @doc """
+  Defines a field on the event with a given name and type.
+
+  All field definitions must be put inside `message/1` block.
+
+  The macro accepts three arguments:
+
+    * `name` - name of the field in the underlying struct.
+    * `type` - declares the expected type of the field value. It's validated
+      iternally via `cast!/1`.
+    * `opts` - additional options for the field. Currently, `required` and
+      `default` are accepted.
+
+  ## Options
+
+    * `:required` - boolean determining whether field value can be left empty
+      (`nil`). If field's `required` option is set to `true` and event is
+      instantiated and casted with that field left empty, an error is raised.
+      Defaults to: `true`.
+
+    * `:default` - sets field value to the provided default when field is left
+      empty during instantating the event. Defaults to: `nil`.
+
+  ## Field types
+
+  The underlying validation logic uses `Ecto.Changeset`, so basically any type
+  accepted by `Ecto.Schema` is also accepted in message field definition.
+
+  There's a special case for passing structs - `%StructModule{}`. This is
+  because we don't want to validate exact contents of the struct, only that
+  the value passed is a struct and is of matching type.
+  """
   defmacro field(name, type, opts \\ []) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
       type =

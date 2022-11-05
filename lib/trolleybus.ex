@@ -88,16 +88,20 @@ defmodule Trolleybus do
   retrieves all handlers provided in event's definition and passes it to
   those handlers.
 
-  Publishing may be executed in three modes - fully synchronous (`:full_sync`,
-  default) which executes all side effects synchronously, within the same
-  process as caller, asynchronous (`:async`), executing side effects in their
-  own processes and not waiting for them to complete executing, and synchronous
-  (`:sync`) which block until all processes executing event handlers complete.
+  Publishing may be executed in three modes:
+
+    * fully synchronous `:full_sync` (default) - executes all handlers
+      sequentially and synchronously, within the same process as caller,
+    * asynchronous `:async` - executes side effects in separate processes
+      not waiting for them to finish executing,
+    * synchronous `:sync` - blocks until all processes executing event
+      handlers complete.
+
   The wait time in case of synchronous publish is limited by timeout setup via
-  `sync_timeout` option, expressed in milliseconds (defaults to 5000). Any
+  `:sync_timeout` option, expressed in milliseconds (defaults to 5000). Any
   handler execution process running for longer than the setup timeout is killed.
 
-  For simplicity, Trolleybus is neither concerned with persistence nor retrying
+  For simplicity, `Trolleybus` is neither concerned with persistence nor retrying
   failed handler calls. If a particular case calls for this kind of guarantees,
   it can be realised by, for instance, making relevant handler use job processing
   library like [Oban](https://hexdocs.pm/oban/Oban.html).
@@ -109,13 +113,13 @@ defmodule Trolleybus do
   wrappers: `transaction/1`, `buffered/1` or `muffled/1`. The underlying
   mechanism is the same for all three. Before a block of code is executed, a
   buffer is opened. The buffer is an agent process storing a list of events
-  along with their respective publish options (if any are passed). Each call to
+  along with their respective publish options, if any are passed. Each call to
   `publish/2` inside that block puts the event in that list instead of actually
   publishing it. Once the block of code finishes executing, further behavior
   depends on the wrapper. `buffered/1` and `muffled/1` discard the events (the
   former returns them too, along with the result). `transaction/1` fetches
   contents of the current buffer, closes it and re-publishes all the events from
-  the list. If wrappers are nested, the re-publishing will result in putting the
+  the list. If wrappers are nested, the re-publishing will result by putting the
   events in another buffer opened by the outer wrapper. Eventually, the events
   get either dispatched to respective handlers or discarded.
 
@@ -125,7 +129,7 @@ defmodule Trolleybus do
 
   ## Events inside transactions
 
-  In case of more involved logic, there can be multiple events published along a
+  In case of more complex logic, there can be multiple events published along a
   single code path. This code path can in turn contain multiple subroutines
   changing system state, wrapped in one big transaction. It's often hard to
   defer all the side effects outside of that transaction without clunky
@@ -150,7 +154,8 @@ defmodule Trolleybus do
       end
 
   we can defer actual publishing of all events until after the transaction is
-  executed by wrapping the top level Ecto transaction with Trolleybus transaction:
+  executed by wrapping the top level `Ecto` transaction with `Trolleybus`
+  transaction:
 
       def process(multi) do
         case Trolleybus.transaction(fn -> Repo.transaction(multi) end) do
@@ -176,13 +181,13 @@ defmodule Trolleybus do
   ## Reusing code publishing events
 
   We often want to reuse existing logic as a part of larger, more complex
-  routines. The problem with that is the fact that this existing logic may
-  already publish events specific to that original context. It may often be
-  undesirable, because we want to emit events specific to that larger routine
-  and need existing logic only for its data manipulation part. Another use
-  case where that may be an issue is reusing business logic for setting up
-  system state in tests instead of synthetic factories. In order to make this
-  possible, we can wrap the reused code with `muffled/1`:
+  routines. The problem is that this existing logic may already publish events
+  specific to that original context. It may often be undesirable, because we
+  want to emit events specific to the wrapping routine and need existing logic
+  only for its data manipulation part. Another use case where that may be an
+  issue is reusing business logic for setting up system state in tests instead
+  of synthetic factories. In order to make it possible, we can wrap the reused
+  code with `muffled/1`:
 
       {:ok, %{membership: accepted_membership}} = Trolleybus.muffled(fn ->
         AcceptInvite.accept_membership_invite(user, membership)
@@ -194,7 +199,7 @@ defmodule Trolleybus do
   ## Testing events
 
   When we want to test what events does a given piece of logic publish
-  (instead of relying on checking side effects), we can use `buffered/1`:
+  instead of relying on checking side effects, we can use `buffered/1`:
 
       {{:ok, %{membership}}, events} = Trolleybus.buffered(fn ->
         AcceptInvite.accept_membership_invite(user, membership)
@@ -207,9 +212,8 @@ defmodule Trolleybus do
   are then promptly discarded, so no handler gets triggered.
 
   Another potentially handy function is `get_buffer/0`, which allows to "peek"
-  into contents of the buffer at any point when buffer is open, meaning it can
-  be used inside any of `buffered/1`, `muffled/1` or `transaction/1`
-  blocks:
+  into contents of the buffer at any point when buffer is open. It can be used
+  inside any of `buffered/1`, `muffled/1` or `transaction/1` blocks:
 
       Trolleybus.muffled(fn ->
         ...
@@ -219,17 +223,34 @@ defmodule Trolleybus do
         ...
       end)
 
-  One important thing to note is that the mode can be overridden in all
-  circumstances using Application configuration:
+  One important thing to note is that publishing mode can be overridden in all
+  calls using Application configuration:
 
       config :trolleybus, mode_override: :full_sync
 
-
   This allows users to force all events to be published using a given mode, for
   example `:full_sync` in `config/test.exs` to make testing side effects
-  simpler. The intent here is avoiding any issues related to running handlers
-  in a separate process - like having to explicitly handle Ecto sandbox
+  simpler. This lets us avoiding any issues related to running handlers
+  in a separate process, like having to explicitly handle `Ecto` sandbox
   allowance.
+
+  ## Listing routes
+
+  In order to print all events and associated handlers in the project,
+  a dedicated mix task can be run:
+
+      mix trolleybus.routes
+
+  The output has a following form:
+
+      * App.Events.DocumentTransferred
+          => App.Webhooks.EventHandler
+          => App.Memberships.EmailEventHandler
+
+      * App.Events.UserInvitedToDocument
+          => App.Memberships.EmailEventHandler
+
+      ...
   """
 
   alias Trolleybus.TaskSupervisor

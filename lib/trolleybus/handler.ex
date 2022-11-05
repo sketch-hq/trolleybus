@@ -18,6 +18,8 @@ defmodule Trolleybus.Handler do
         end
       end
 
+  ## Defining event handlers
+
   The shape of the function head for the callback is expected to meet certain
   criteria. Each implemented clause must have one of the following shapes:
 
@@ -57,7 +59,7 @@ defmodule Trolleybus.Handler do
 
   Each supported event is expected to be handled by a distinct function clause
   using pattern matching. For more information on expected implementation of
-  the callback, see "Example" above.
+  the callback, see "Defining event handlers" above.
   """
   @callback handle_event(struct()) :: term()
 
