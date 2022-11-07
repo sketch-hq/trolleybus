@@ -27,7 +27,8 @@ defmodule Trolleybus.MixProject do
   defp package do
     [
       description: "Local, application-level PubSub API for dispatching side effects.",
-      licenses: ["Apache-2.0"],
+      maintainers: ["Sketch"],
+      licenses: ["MIT"],
       links: %{
         "GitHub" => @source_url
       }
@@ -50,7 +51,8 @@ defmodule Trolleybus.MixProject do
       source_ref: "v#{@version}",
       extras: [
         "README.md",
-        "CHANGELOG.md"
+        "CHANGELOG.md",
+        "LICENSE"
       ]
     ]
   end
