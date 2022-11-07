@@ -18,6 +18,8 @@ defmodule Trolleybus.Handler do
         end
       end
 
+  ## Defining event handlers
+
   The shape of the function head for the callback is expected to meet certain
   criteria. Each implemented clause must have one of the following shapes:
 
@@ -40,7 +42,7 @@ defmodule Trolleybus.Handler do
 
   while this clause will raise an error:
 
-      def handle_event (%EventModule{field: %{} = value) do
+      def handle_event(%EventModule{field: %{} = value) do
         ...
       end
 
@@ -52,10 +54,20 @@ defmodule Trolleybus.Handler do
   all implemented handlers and guarantees exhaustive matching.
   """
 
+  @doc """
+  Defines event handler for handled events.
+
+  Each supported event is expected to be handled by a distinct function clause
+  using pattern matching. For more information on expected implementation of
+  the callback, see "Defining event handlers" above.
+  """
   @callback handle_event(struct()) :: term()
-  @callback __handled_events__() :: [module()]
 
   defmodule Error do
+    @moduledoc """
+    Error raised on invalid handler definition.
+    """
+
     defexception [:message]
   end
 
@@ -106,14 +118,14 @@ defmodule Trolleybus.Handler do
       |> Enum.uniq()
 
     quote do
-      @impl true
+      @spec __handled_events__() :: [module()]
       def __handled_events__() do
         unquote(handled_events)
       end
     end
   end
 
-  def enforce_map_match_pattern!(contents, pattern) when is_list(contents) do
+  defp enforce_map_match_pattern!(contents, pattern) when is_list(contents) do
     Enum.each(contents, fn
       {label, {binding, _, nil}} when is_atom(label) and is_atom(binding) ->
         :ok
@@ -123,11 +135,11 @@ defmodule Trolleybus.Handler do
     end)
   end
 
-  def enforce_map_match_pattern!(_contents, pattern) do
+  defp enforce_map_match_pattern!(_contents, pattern) do
     raise_pattern_error!(pattern, "Map contents can only bind keys to variables.")
   end
 
-  def raise_pattern_error!(pattern, message) do
+  defp raise_pattern_error!(pattern, message) do
     pattern_string = Macro.to_string(pattern)
 
     raise Trolleybus.Handler.Error,
