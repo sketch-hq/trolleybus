@@ -121,7 +121,7 @@ defmodule Trolleybus.Event do
       Defaults to: `true`.
 
     * `:default` - sets field value to the provided default when field is left
-      empty during instantating the event. Defaults to: `nil`.
+      empty during instantiating the event. Defaults to: `nil`.
 
   ## Field types
 
