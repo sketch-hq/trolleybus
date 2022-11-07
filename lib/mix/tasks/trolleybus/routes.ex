@@ -1,5 +1,5 @@
 defmodule Mix.Tasks.Trolleybus.Routes do
-  @shortdoc "List all event <-> handler relations setup by Trolleybus"
+  @shortdoc "List all event <-> handler relations set up by Trolleybus"
 
   @moduledoc """
   This task prints routing between events and handlers setup by `Trolleybus`.

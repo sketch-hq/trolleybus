@@ -2,7 +2,7 @@ defmodule Trolleybus.Event do
   @moduledoc """
   Defines an event struct for publishing via `Trolleybus`.
 
-  An event definition is composed of a couple elements:
+  An event definition is composed of a couple of elements:
 
     * `handler/1` declarations - they define which handlers are called when
       event is published.
@@ -73,9 +73,9 @@ defmodule Trolleybus.Event do
   Indicates a handler the event is dispatched to.
 
   The macro accepts a module name. That name is later validated when
-  casting the event internally via `cast!/1`. If handler either isn't
-  implementing `Trolleybus.Handler` behaviour or is not explicitly
-  handling that particular event, an error is raised.
+  casting the event internally via `cast!/1`. If the handler does not
+  implement the`Trolleybus.Handler` behaviour or does not explicitly
+  handle that particular event, an error is raised.
   """
   defmacro handler(handler_module) do
     quote do
