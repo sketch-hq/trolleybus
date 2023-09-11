@@ -63,7 +63,6 @@ defmodule Trolleybus.Event do
 
       @spec cast!(map()) :: map()
       def cast!(event) do
-        Trolleybus.Event.validate_handlers!(__MODULE__, __handlers__())
         Trolleybus.Event.cast_event!(event)
       end
     end
@@ -202,29 +201,6 @@ defmodule Trolleybus.Event do
   end
 
   @doc false
-  @spec validate_handlers!(module(), [module()]) :: :ok | no_return()
-  def validate_handlers!(module, handlers) do
-    {handlers, wrong_handlers} =
-      Enum.split_with(handlers, &function_exported?(&1, :__handled_events__, 0))
-
-    no_clause_handlers = Enum.reject(handlers, &(module in &1.__handled_events__()))
-
-    if wrong_handlers != [] or no_clause_handlers != [] do
-      error =
-        "#{inspect(module)} has invalid handlers configured.\n"
-        |> append_handler_errors(wrong_handlers, "Following modules are not valid handlers")
-        |> append_handler_errors(
-          no_clause_handlers,
-          "Following handlers are missing clause for the event"
-        )
-
-      raise Trolleybus.Event.Error, message: error
-    end
-
-    :ok
-  end
-
-  @doc false
   @spec cast_event!(event) :: event | no_return() when event: struct()
   def cast_event!(event) do
     %event_module{} = event
@@ -251,16 +227,6 @@ defmodule Trolleybus.Event do
         #{inspect(event)}
         """
     end
-  end
-
-  defp append_handler_errors(existing_error, [], _message) do
-    existing_error
-  end
-
-  defp append_handler_errors(existing_error, bad_handlers, message) do
-    bad_handlers_list = Enum.map_join(bad_handlers, "\n", &"- #{inspect(&1)}")
-
-    "#{existing_error}\n#{message}:\n#{bad_handlers_list}"
   end
 
   defp build_cast_errors_list(changeset) do
