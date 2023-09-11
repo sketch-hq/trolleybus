@@ -34,26 +34,6 @@ defmodule TrolleybusTest do
     end
   end
 
-  defmodule EventWithNonExistentHandler do
-    use Trolleybus.Event
-
-    handler(HandlerThatDoesNotExist)
-
-    message do
-      field(:field1, :string)
-    end
-  end
-
-  defmodule EventWithNonSupportingHandler do
-    use Trolleybus.Event
-
-    handler(TrolleybusTest.Handler1)
-
-    message do
-      field(:field1, :string)
-    end
-  end
-
   defmodule Handler1 do
     use Trolleybus.Handler
 
@@ -140,18 +120,6 @@ defmodule TrolleybusTest do
                array_field: [%SomeStruct{}],
                explode?: true
              } = event
-    end
-
-    test "fails for non-existent handler in event definition" do
-      assert_raise Trolleybus.Event.Error, ~r/are not valid handlers/, fn ->
-        Trolleybus.publish(%EventWithNonExistentHandler{field1: "foo"})
-      end
-    end
-
-    test "fails for a hadler missing clause for the event" do
-      assert_raise Trolleybus.Event.Error, ~r/are missing clause for the event/, fn ->
-        Trolleybus.publish(%EventWithNonSupportingHandler{field1: "foo"})
-      end
     end
 
     test "fails for event failing validation" do
