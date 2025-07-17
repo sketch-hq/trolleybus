@@ -1,14 +1,14 @@
 defmodule Trolleybus.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.3.0"
   @source_url "https://github.com/sketch-hq/trolleybus"
 
   def project do
     [
       app: :trolleybus,
       version: @version,
-      elixir: "~> 1.12",
+      elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),

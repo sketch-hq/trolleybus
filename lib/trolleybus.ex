@@ -454,7 +454,7 @@ defmodule Trolleybus do
         buffer = get_buffer()
         close_buffer()
 
-        for {event, opts} <- Enum.reverse(buffer) do
+        for {event, opts} <- buffer do
           publish(event, opts)
         end
 

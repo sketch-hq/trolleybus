@@ -49,7 +49,7 @@ defmodule TrolleybusTest do
     def handle_event(%TrolleybusTest.Event1{binary_field: pid_binary} = event) do
       pid = :erlang.binary_to_term(pid_binary)
 
-      send(pid, {:published_handler1, event})
+      send(pid, {:published_handler1, :erlang.monotonic_time(), event})
 
       :ok
     end
@@ -61,7 +61,7 @@ defmodule TrolleybusTest do
     def handle_event(%TrolleybusTest.Event2{binary_field: pid_binary} = event) do
       pid = :erlang.binary_to_term(pid_binary)
 
-      send(pid, {:published_handler1, event})
+      send(pid, {:published_handler1, :erlang.monotonic_time(), event})
 
       :ok
     end
@@ -77,7 +77,7 @@ defmodule TrolleybusTest do
     def handle_event(%TrolleybusTest.Event1{binary_field: pid_binary} = event) do
       pid = :erlang.binary_to_term(pid_binary)
 
-      send(pid, {:published_handler2, event})
+      send(pid, {:published_handler2, :erlang.monotonic_time(), event})
 
       :ok
     end
@@ -92,8 +92,8 @@ defmodule TrolleybusTest do
       pid_binary = :erlang.term_to_binary(self())
       assert :ok = Trolleybus.publish(%Event1{field1: "foo", binary_field: pid_binary})
 
-      assert_received {:published_handler1, event}
-      assert_received {:published_handler2, ^event}
+      assert_received {:published_handler1, _, event}
+      assert_received {:published_handler2, _, ^event}
       assert %Event1{field1: "foo", binary_field: ^pid_binary} = event
     end
 
@@ -111,8 +111,8 @@ defmodule TrolleybusTest do
              end) =~
                "[#{inspect(__MODULE__)}.Handler1] Event handler failed with ** (RuntimeError) boom"
 
-      refute_received {:published_handler1, _}
-      assert_received {:published_handler2, event}
+      refute_received {:published_handler1, _, _}
+      assert_received {:published_handler2, _, event}
 
       assert %Event1{
                field1: "foo",
@@ -145,10 +145,11 @@ defmodule TrolleybusTest do
                  {:ok, :ok}
                end)
 
-      assert_received {:published_handler1, %Event1{} = event1}
-      assert_received {:published_handler2, ^event1}
-      assert_received {:published_handler1, %Event2{} = event2}
+      assert_received {:published_handler1, t0, %Event1{} = event1}
+      assert_received {:published_handler2, _, ^event1}
+      assert_received {:published_handler1, t1, %Event2{} = event2}
 
+      assert t0 <= t1
       assert %Event1{field1: "foo", binary_field: ^pid_binary} = event1
       assert %Event2{field1: "bar", binary_field: ^pid_binary} = event2
     end
@@ -191,9 +192,10 @@ defmodule TrolleybusTest do
                  {:ok, :ok}
                end)
 
-      assert_received {:published_handler1, %Event1{} = event1}
-      assert_received {:published_handler2, ^event1}
-      assert_received {:published_handler1, %Event2{}}
+      assert_received {:published_handler1, t0, %Event1{} = event1}
+      assert_received {:published_handler2, _, ^event1}
+      assert_received {:published_handler1, t1, %Event2{}}
+      assert t0 <= t1
     end
 
     test "publishes outer buffer if inner one fails" do
@@ -224,9 +226,9 @@ defmodule TrolleybusTest do
                  {:ok, :ok}
                end)
 
-      assert_received {:published_handler1, %Event1{} = event1}
-      assert_received {:published_handler2, ^event1}
-      refute_received {:published_handler1, %Event2{}}
+      assert_received {:published_handler1, _, %Event1{} = event1}
+      assert_received {:published_handler2, _, ^event1}
+      refute_received {:published_handler1, _, %Event2{}}
     end
   end
 
