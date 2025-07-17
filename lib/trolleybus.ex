@@ -333,7 +333,7 @@ defmodule Trolleybus do
           "result"
         end)
   """
-  @spec buffered((() -> result)) :: {result, [{struct(), [publish_option()]}]}
+  @spec buffered((-> result)) :: {result, [{struct(), [publish_option()]}]}
         when result: term()
   def buffered(fun) when is_function(fun, 0) do
     buffer = open_buffer()
@@ -361,7 +361,7 @@ defmodule Trolleybus do
           "result"
         end)
   """
-  @spec muffled((() -> result)) :: result when result: term()
+  @spec muffled((-> result)) :: result when result: term()
   def muffled(fun) when is_function(fun, 0) do
     buffer = open_buffer()
 
@@ -422,7 +422,7 @@ defmodule Trolleybus do
           {:ok, "result"}
         end)
   """
-  @spec transaction((() -> result)) :: result when result: term()
+  @spec transaction((-> result)) :: result when result: term()
   def transaction(fun) when is_function(fun, 0) do
     buffer = open_buffer()
 
@@ -454,7 +454,7 @@ defmodule Trolleybus do
         buffer = get_buffer()
         close_buffer()
 
-        for {event, opts} <- Enum.reverse(buffer) do
+        for {event, opts} <- buffer do
           publish(event, opts)
         end
 
