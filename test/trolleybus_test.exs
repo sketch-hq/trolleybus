@@ -49,7 +49,7 @@ defmodule TrolleybusTest do
     def handle_event(%TrolleybusTest.Event1{binary_field: pid_binary} = event) do
       pid = :erlang.binary_to_term(pid_binary)
 
-      send(pid, {:published_handler1, :erlang.monotonic_time(), event})
+      send(pid, {:published_handler1, :erlang.unique_integer([:monotonic]), event})
 
       :ok
     end
@@ -61,7 +61,7 @@ defmodule TrolleybusTest do
     def handle_event(%TrolleybusTest.Event2{binary_field: pid_binary} = event) do
       pid = :erlang.binary_to_term(pid_binary)
 
-      send(pid, {:published_handler1, :erlang.monotonic_time(), event})
+      send(pid, {:published_handler1, :erlang.unique_integer([:monotonic]), event})
 
       :ok
     end
@@ -77,7 +77,7 @@ defmodule TrolleybusTest do
     def handle_event(%TrolleybusTest.Event1{binary_field: pid_binary} = event) do
       pid = :erlang.binary_to_term(pid_binary)
 
-      send(pid, {:published_handler2, :erlang.monotonic_time(), event})
+      send(pid, {:published_handler2, :erlang.unique_integer([:monotonic]), event})
 
       :ok
     end
@@ -149,7 +149,7 @@ defmodule TrolleybusTest do
       assert_received {:published_handler2, _, ^event1}
       assert_received {:published_handler1, t1, %Event2{} = event2}
 
-      assert t0 <= t1
+      assert t0 < t1
       assert %Event1{field1: "foo", binary_field: ^pid_binary} = event1
       assert %Event2{field1: "bar", binary_field: ^pid_binary} = event2
     end
@@ -195,7 +195,7 @@ defmodule TrolleybusTest do
       assert_received {:published_handler1, t0, %Event1{} = event1}
       assert_received {:published_handler2, _, ^event1}
       assert_received {:published_handler1, t1, %Event2{}}
-      assert t0 <= t1
+      assert t0 < t1
     end
 
     test "publishes outer buffer if inner one fails" do
